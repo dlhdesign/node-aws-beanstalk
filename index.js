@@ -75,6 +75,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   }
 
   var restartAppServer = function(callback) {
+    logger('Restarting environment "' + params.EnvironmentName + '"...');
     beanstalk.restartAppServer(
       pick(params,['EnvironmentName']),
       function(err, data) {
@@ -88,6 +89,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   };
 
   var createEnvironment = function(callback) {
+    logger('Creating environment "' + params.EnvironmentName + '"...');
     beanstalk.createEnvironment(
       pick(params,['ApplicationName', 'EnvironmentName', 'Description', 'OptionSettings', 'SolutionStackName', 'TemplateName', 'VersionLabel', 'Tier', 'Tags']),
       function(err, data) {
@@ -101,6 +103,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   };
 
   var updateEnvironment = function(callback) {
+    logger('Updating environment "' + params.EnvironmentName + '"...');
     beanstalk.updateEnvironment(
       pick(params,['EnvironmentName', 'Description', 'OptionSettings', 'SolutionStackName', 'TemplateName', 'VersionLabel', 'Tier']),
       function(err, data) {
@@ -114,6 +117,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   };
 
   var describeEnvironment = function(callback) {
+    logger('Checking for environment "' + params.EnvironmentName + '"...');
     beanstalk.describeEnvironments(
       {
         ApplicationName: params.ApplicationName,
@@ -135,6 +139,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   };
 
   var createApplication = function(callback) {
+    logger('Creating application "' + params.ApplicationName + '" version "' + params.VersionLabel + '"...');
     beanstalk.createApplicationVersion(
       pick(params,['ApplicationName', 'Description', 'AutoCreateApplication', 'VersionLabel', 'SourceBundle']),
       function(err, data) {
@@ -148,6 +153,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   };
 
   var describeApplication = function(callback) {
+    logger('Checking for application "' + params.ApplicationName + '" version "' + params.VersionLabel + '"...');
     beanstalk.describeApplicationVersions(
       {
         ApplicationName: params.ApplicationName,
@@ -169,6 +175,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   };
 
   var createBucket = function(callback) {
+    logger('Creating S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
     S3.createBucket(
       {
         Bucket: params.SourceBundle.S3Bucket
@@ -185,6 +192,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   };
 
   var uploadCode = function(callback) {
+    logger('Uploading code to S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
     fs.readFile(codePackage, function(err, data) {
       if(err) {
         return callback('Error reading specified package "'+ codePackage + '"');
@@ -208,6 +216,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     });
   };
 
+  logger('Checking for S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
   S3.headBucket(
     {
       Bucket: params.SourceBundle.S3Bucket
