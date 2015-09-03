@@ -3,7 +3,7 @@
 A module helps you automate AWS beanstalk application deployment.
 All application and environment configuration is managed in the codebase. So you can version control everything and automate the deployment instead of click click click in AWS console.
 
-Inspired by https://github.com/ThoughtWorksStudios/node-aws-lambda
+Inspired by [https://github.com/ThoughtWorksStudios/node-aws-lambda](https://github.com/ThoughtWorksStudios/node-aws-lambda)
 
 # Gulp example:
 
