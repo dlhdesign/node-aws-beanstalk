@@ -2,18 +2,19 @@ var fs = require('fs');
 var AWS = require('aws-sdk');
 var packageConfig = require('./package.json');
 
-function pick(src, keys) {
-  var ret = {};
-  keys.forEach(function(key) {
-    ret[key] = src[key];
-    if (ret[key] === undefined) {
-      delete ret[key];
-    }
-  });
-  return ret;
-}
-
 exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) {
+
+  var pick = function(src, keys) {
+    var ret = {};
+    keys.forEach(function(key) {
+      ret[key] = src[key];
+      if (ret[key] === undefined) {
+        delete ret[key];
+      }
+    });
+    return ret;
+  }
+
   if (!logger) {
     logger = console.log;
   }
@@ -35,15 +36,15 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   if (!beanstalk) {
     beanstalk = new AWS.ElasticBeanstalk({
       region: config.region,
-      accessKeyId: "accessKeyId" in config ? config.accessKeyId : "",
-      secretAccessKey: "secretAccessKey" in config ? config.secretAccessKey : ""
+      accessKeyId: 'accessKeyId' in config ? config.accessKeyId : '',
+      secretAccessKey: 'secretAccessKey' in config ? config.secretAccessKey : ''
     });
   }
   if (!S3) {
-    beanstalk = new AWS.S3({
+    S3 = new AWS.S3({
       region: config.region,
-      accessKeyId: "accessKeyId" in config ? config.accessKeyId : "",
-      secretAccessKey: "secretAccessKey" in config ? config.secretAccessKey : ""
+      accessKeyId: 'accessKeyId' in config ? config.accessKeyId : '',
+      secretAccessKey: 'secretAccessKey' in config ? config.secretAccessKey : ''
     });
   }
 
@@ -66,10 +67,10 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     OptionSettings: config.environmentSettings
   };
 
-  if (!param.SolutionStackName && !param.TemplateName) {
+  if (!params.SolutionStackName && !params.TemplateName) {
     return callback('Missing either "solutionStack" or "template" config');
   }
-  if (param.SolutionStackName && param.TemplateName) {
+  if (params.SolutionStackName && params.TemplateName) {
     return callback('Provided both "solutionStack" and "template" config; only one or the other supported');
   }
 
@@ -192,7 +193,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
         {
           Bucket: params.SourceBundle.S3Bucket,
           Key: codePackage,
-          Stream: data,
+          Body: data,
           ContentType: 'binary/octet-stream'
         },
         function(err, data) {
@@ -210,7 +211,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   S3.headBucket(
     {
       Bucket: params.SourceBundle.S3Bucket
-    }
+    },
     function(err, data) {
       if (err) {
         if (err.statusCode === 404) {
