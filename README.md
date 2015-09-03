@@ -83,7 +83,7 @@ module.exports = {
   ]
 }
 ```
-Additional environment settings can be found (here)[http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/command-options.html#command-options-general].
+Additional environment settings can be found [here](http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/command-options.html#command-options-general).
 
 # Proxy setup
 Deployment via https proxy is supported by setting environment variable "HTTPS_PROXY". For example:
