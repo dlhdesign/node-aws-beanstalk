@@ -77,8 +77,6 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     return callback('Provided both "solutionStack" and "template" config; only one or the other supported');
   }
 
-  var needEnvironmentCreate = false;
-
   var createEnvironment = function(callback) {
     logger('Creating environment "' + params.EnvironmentName + '"...');
     beanstalk.createEnvironment(
@@ -111,6 +109,69 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     );
   };
 
+  var describeEnvironment = function(callback) {
+    logger('Checking for environment "' + params.EnvironmentName + '"...');
+    beanstalk.describeEnvironments(
+      {
+        ApplicationName: params.ApplicationName,
+        EnvironmentNames: [params.EnvironmentName]
+      },
+      function(err, data) {
+        if (err) {
+          logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
+          callback(err);
+        } else {
+          if (data.Environments && data.Environments.length > 0) {
+            if (data.Environments[0].Status !== 'Ready') {
+              logger('Environment is currently not in "Ready" status (currently "' + data.Environments[0].Status + '"). Please resolve/wait and try again.');
+              callback();
+            } else {
+              updateEnvironment(callback);
+            }
+          } else {
+            createEnvironment(callback);
+          }
+        }
+      }
+    );
+  };
+
+  var createApplication = function(callback) {
+    logger('Creating application "' + params.ApplicationName + '" version "' + params.VersionLabel + '"...');
+    beanstalk.createApplicationVersion(
+      pick(params,['ApplicationName', 'Description', 'AutoCreateApplication', 'VersionLabel', 'SourceBundle']),
+      function(err, data) {
+      if (err) {
+        logger('Create application version failed. Check your iam:PassRole permissions.');
+        callback(err);
+      } else {
+        describeEnvironment(callback);
+      }
+    });
+  };
+
+  var describeApplication = function(callback) {
+    logger('Checking for application "' + params.ApplicationName + '" version "' + params.VersionLabel + '"...');
+    beanstalk.describeApplicationVersions(
+      {
+        ApplicationName: params.ApplicationName,
+        VersionLabels: [params.VersionLabel]
+      },
+      function(err, data) {
+        if (err) {
+          logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
+          callback(err);
+        } else {
+          if (data.ApplicationVersions && data.ApplicationVersions.length > 0) {
+            describeEnvironment(callback);
+          } else {
+            createApplication(callback);
+          }
+        }
+      }
+    );
+  };
+
   var uploadCode = function(callback) {
     logger('Uploading code to S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
     fs.readFile(codePackage, function(err, data) {
@@ -129,11 +190,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
             logger('Upload of "' + codePackage + '" to S3 bucket failed.');
             callback(err);
           } else {
-            if (needEnvironmentCreate === true) {
-              createEnvironment(callback);
-            } else {
-              updateEnvironment(callback);
-            }
+            describeApplication(callback);
           }
         }
       );
@@ -178,69 +235,5 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     );
   };
 
-  var describeEnvironment = function(callback) {
-    logger('Checking for environment "' + params.EnvironmentName + '"...');
-    beanstalk.describeEnvironments(
-      {
-        ApplicationName: params.ApplicationName,
-        EnvironmentNames: [params.EnvironmentName]
-      },
-      function(err, data) {
-        if (err) {
-          logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
-          callback(err);
-        } else {
-          if (data.Environments && data.Environments.length > 0) {
-            if (data.Environments[0].Status !== 'Ready') {
-              logger('Environment is currently not in "Ready" status (currently "' + data.Environments[0].Status + '"). Please resolve/wait and try again.');
-              callback();
-            } else {
-              checkBucket(callback);
-            }
-          } else {
-            needEnvironmentCreate = true;
-            checkBucket(callback);
-          }
-        }
-      }
-    );
-  };
-
-  var createApplication = function(callback) {
-    logger('Creating application "' + params.ApplicationName + '" version "' + params.VersionLabel + '"...');
-    beanstalk.createApplicationVersion(
-      pick(params,['ApplicationName', 'Description', 'AutoCreateApplication', 'VersionLabel', 'SourceBundle']),
-      function(err, data) {
-      if (err) {
-        logger('Create application version failed. Check your iam:PassRole permissions.');
-        callback(err);
-      } else {
-        describeEnvironment(callback);
-      }
-    });
-  };
-
-  var describeApplication = function(callback) {
-    logger('Checking for application "' + params.ApplicationName + '" version "' + params.VersionLabel + '"...');
-    beanstalk.describeApplicationVersions(
-      {
-        ApplicationName: params.ApplicationName,
-        VersionLabels: [params.VersionLabel]
-      },
-      function(err, data) {
-        if (err) {
-          logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
-          callback(err);
-        } else {
-          if (data.ApplicationVersions && data.ApplicationVersions.length > 0) {
-            describeEnvironment(callback);
-          } else {
-            createApplication(callback);
-          }
-        }
-      }
-    );
-  };
-
-  describeApplication(callback);
+  checkBucket(callback);
 };
