@@ -125,14 +125,14 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
       },
       function(err, data) {
         if (err) {
-          if (err.statusCode === 404) {
-            createEnvironment(callback);
-          } else {
-            logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
-            callback(err);
-          }
+          logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
+          callback(err);
         } else {
-          updateEnvironment(callback);
+          if (data.Environments && data.Environments.length > 0) {
+            updateEnvironment(callback);
+          } else {
+            createEnvironment(callback);
+          }
         }
       }
     );
@@ -161,14 +161,14 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
       },
       function(err, data) {
         if (err) {
-          if (err.statusCode === 404) {
-            createApplication(callback);
-          } else {
-            logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
-            callback(err);
-          }
+          logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
+          callback(err);
         } else {
-          updateEnvironment(callback);
+          if (data.ApplicationVersions && data.ApplicationVersions.length > 0) {
+            updateEnvironment(callback);
+          } else {
+            createApplication(callback);
+          }
         }
       }
     );
