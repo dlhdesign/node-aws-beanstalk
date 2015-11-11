@@ -55,7 +55,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     Description: config.description,
     VersionLabel: config.version,
     SourceBundle: {
-      S3Bucket: config.S3Bucket !== undefined ? config.S3Bucket : config.appName,
+      S3Bucket: (config.S3Bucket ? config.S3Bucket : config.appName).toLowerCase(),
       S3Key: config.version + '-' + codePackage
     },
     AutoCreateApplication: true,
@@ -181,7 +181,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
       S3.upload(
         {
           Bucket: params.SourceBundle.S3Bucket,
-          Key: params.VersionLabel + '-' + codePackage,
+          Key: params.SourceBundle.S3Key,
           Body: data,
           ContentType: 'binary/octet-stream'
         },
