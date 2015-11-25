@@ -1,7 +1,5 @@
 var fs = require('fs');
 var AWS = require('aws-sdk');
-var path = require('path');
-var packageConfig = require('./package.json');
 
 exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) {
 
@@ -49,7 +47,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     });
   }
 
-  config.version = config.version !== undefined ? config.version : packageConfig.version;
+  config.version = config.version !== undefined ? config.version : '1.0.0';
   var params = {
     ApplicationName: config.appName,
     EnvironmentName: config.appName + '-env',
