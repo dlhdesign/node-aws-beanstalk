@@ -1,6 +1,7 @@
 var fs = require('fs');
 var AWS = require('aws-sdk');
-var packageConfig = require('../../package.json');
+var path = require('path');
+var packageConfig = require('./package.json');
 
 exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) {
 
@@ -56,7 +57,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     VersionLabel: config.version,
     SourceBundle: {
       S3Bucket: (config.S3Bucket ? config.S3Bucket : config.appName).toLowerCase(),
-      S3Key: config.version + '-' + codePackage
+      S3Key: config.version + '_' + codePackage
     },
     AutoCreateApplication: true,
     SolutionStackName: config.solutionStack,
