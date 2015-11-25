@@ -48,26 +48,27 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   }
 
   config.version = config.version !== undefined ? config.version : '1.0.0';
-  var params = {
-    ApplicationName: config.appName,
-    EnvironmentName: config.appName + '-env',
-    Description: config.description,
-    VersionLabel: config.version,
-    SourceBundle: {
-      S3Bucket: (config.S3Bucket ? config.S3Bucket : config.appName).toLowerCase(),
-      S3Key: config.version + '_' + codePackage
-    },
-    AutoCreateApplication: true,
-    SolutionStackName: config.solutionStack,
-    TemplateName: config.template,
-    Tier: {
-      Name: config.tier || 'WebServer',
-      Type: config.tier === 'Worker' ? 'SQS/HTTP' : 'Standard',
-      Version: '1.0'
-    },
-    Tags: config.environmentTags,
-    OptionSettings: config.environmentSettings
-  };
+  var packageName = codePackage.split('/'),
+    params = {
+      ApplicationName: config.appName,
+      EnvironmentName: config.appName + '-env',
+      Description: config.description,
+      VersionLabel: config.version,
+      SourceBundle: {
+        S3Bucket: (config.S3Bucket ? config.S3Bucket : config.appName).toLowerCase(),
+        S3Key: config.version + '-' + packageName[packageName.length - 1]
+      },
+      AutoCreateApplication: true,
+      SolutionStackName: config.solutionStack,
+      TemplateName: config.template,
+      Tier: {
+        Name: config.tier || 'WebServer',
+        Type: config.tier === 'Worker' ? 'SQS/HTTP' : 'Standard',
+        Version: '1.0'
+      },
+      Tags: config.environmentTags,
+      OptionSettings: config.environmentSettings
+    };
 
   if (!params.SolutionStackName && !params.TemplateName) {
     return callback('Missing either "solutionStack" or "template" config');
