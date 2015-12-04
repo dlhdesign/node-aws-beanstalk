@@ -59,6 +59,7 @@ module.exports = {
   profile: <shared credentials profile name>, // optional for loading AWS credientail from custom profile
   region: '<region>',
   appName: 'MyApp',
+  environmentName: 'MyApp-integration', // optional, default is appName + '-env'
 
   // either the 'solutionStack' OR 'template' key MUST be provided, but not both
   solutionStack: '64bit Amazon Linux 2015.03 v2.0.0 running Node.js',

@@ -51,7 +51,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   var packageName = codePackage.split('/'),
     params = {
       ApplicationName: config.appName,
-      EnvironmentName: config.appName + '-env',
+      EnvironmentName: config.environmentName || config.appName + '-env',
       Description: config.description,
       VersionLabel: config.version,
       SourceBundle: {
