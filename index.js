@@ -53,7 +53,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
       ApplicationName: config.appName,
       EnvironmentName: config.appName + '-env',
       Description: config.description,
-      VersionLabel: config.version,
+      VersionLabel: config.version + '.0',
       SourceBundle: {
         S3Bucket: (config.S3Bucket ? config.S3Bucket : config.appName).toLowerCase(),
         S3Key: config.version + '-' + packageName[packageName.length - 1]
@@ -159,21 +159,17 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   };
 
   var describeApplication = function(callback) {
-    logger('Checking for application "' + params.ApplicationName + '" version "' + params.VersionLabel + '"...');
-    if (params.VersionLabel.split('.').length < 4) {
-      params.VersionLabel += '.0';
-    }
-    beanstalk.describeApplicationVersions(
+    logger('Checking for application "' + params.ApplicationName + '"...');
+    beanstalk.describeApplications(
       {
-        ApplicationName: params.ApplicationName,
-        VersionLabels: [params.VersionLabel]
+        ApplicationNames: [params.ApplicationName]
       },
       function(err, data) {
         if (err) {
           logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
           callback(err);
         } else {
-          if (data.ApplicationVersions && data.ApplicationVersions.length > 0) {
+          if (data.Applications && data.Applications.length > 0) {
             describeEnvironment(callback);
           } else {
             createApplication(callback);
