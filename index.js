@@ -239,7 +239,7 @@ function describeApplication(beanstalk, params, logger, callback) {
   );
 };
 
-function uploadCode(S3, params, logger, callback) {
+function uploadCode(S3, params, codePackage, logger, callback) {
   logger('Uploading code to S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
   fs.readFile(codePackage, function(err, data) {
     if(err) {
@@ -353,7 +353,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     if (err) {
       callback(err);
     } else {
-      uploadCode(S3, params, logger, function (err, data) {
+      uploadCode(S3, params, codePackage,logger, function (err, data) {
         if (err) {
           callback(err);
         } else {
