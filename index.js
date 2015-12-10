@@ -93,6 +93,22 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     );
   };
 
+  var createApplicationVersion = function(callback) {
+    logger('Creating application version "' + params.VersionLabel + '"...');
+    beanstalk.createApplicationVersion(
+      pick(params,['ApplicationName', 'VersionLabel', 'Description', 'SourceBundle']),
+      function(err, data) {
+        if (err) {
+          logger('Create application version failed. Check your iam:PassRole permissions.');
+          callback(err);
+        } else {
+          logger('Version "' + params.VersionLabel + '" created.');
+          updateEnvironment(callback);
+        }
+      }
+    );
+  };
+
   var updateEnvironment = function(callback) {
     logger('Updating environment "' + params.EnvironmentName + '"...');
     beanstalk.updateEnvironment(
@@ -134,7 +150,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
                 version.push(0);
               }
               params.VersionLabel = version.join('.'); 
-              updateEnvironment(callback);
+              createApplicationVersion(callback);
             }
           } else {
             createEnvironment(callback);
