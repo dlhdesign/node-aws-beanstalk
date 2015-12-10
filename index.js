@@ -117,6 +117,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
         EnvironmentNames: [params.EnvironmentName]
       },
       function(err, data) {
+        var version;
         if (err) {
           logger('beanstalk.describeApplication request failed. Check your AWS credentials and permissions.');
           callback(err);
@@ -126,9 +127,17 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
               logger('Environment is currently not in "Ready" status (currently "' + data.Environments[0].Status + '"). Please resolve/wait and try again.');
               callback();
             } else {
+              version = data.Environments[0].VersionLabel.split('.');
+              if (version.length > 3) {
+                version[3] = parseInt(version[version.length])++;
+              } else {
+                version.push(0);
+              }
+              params.VersionLabel = version.join('.'); 
               updateEnvironment(callback);
             }
           } else {
+            params.VersionLabel += '.0';
             createEnvironment(callback);
           }
         }
