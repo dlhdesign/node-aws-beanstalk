@@ -129,7 +129,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
             } else {
               version = data.Environments[0].VersionLabel.split('.');
               if (version.length > 3) {
-                version[3] = parseInt(version[version.length])++;
+                version[3] = parseInt(version[version.length]) + 1;
               } else {
                 version.push(0);
               }
