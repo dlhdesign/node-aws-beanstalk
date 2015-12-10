@@ -137,7 +137,6 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
               updateEnvironment(callback);
             }
           } else {
-            params.VersionLabel += '.0';
             createEnvironment(callback);
           }
         }
@@ -161,6 +160,9 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
 
   var describeApplication = function(callback) {
     logger('Checking for application "' + params.ApplicationName + '" version "' + params.VersionLabel + '"...');
+    if (params.VersionLabel.split('.').length < 4) {
+      params.VersionLabel += '.0';
+    }
     beanstalk.describeApplicationVersions(
       {
         ApplicationName: params.ApplicationName,
