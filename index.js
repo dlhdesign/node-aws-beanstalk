@@ -257,7 +257,7 @@ function uploadCode(S3, params, codePackage, logger, callback) {
           logger('Upload of "' + codePackage + '" to S3 bucket failed.');
           callback(err);
         } else {
-          describeApplication(callback);
+          callback(err, data);
         }
       }
     );
