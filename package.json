@@ -1,6 +1,6 @@
 {
   "name": "node-aws-beanstalk",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "A module to help you automate AWS beanstalk app deployment.",
   "repository": {
     "type": "git",
