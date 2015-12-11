@@ -57,7 +57,10 @@ function waitForEnv(beanstalk, params, status, logger, callback, count) {
       EnvironmentNames: [params.EnvironmentName]
     },
     function(err, data) {
-      var waitTime = ((30 - (count * 2)) || 2);
+      var waitTime = 30 - (count * 2);
+      if (waitTime < 2) {
+        waitTime = 2;
+      }
       if (err) {
         logger('beanstalk.describeEnvironments request failed. Check your AWS credentials and permissions.');
         callback(err);
