@@ -41,6 +41,11 @@ gulp.task('upload', function(callback) {
   awsBeanstalk.deploy('./dist.zip', require("./beanstalk-config.js"), callback);
 });
 
+// update task can be used to update the configured environment
+gulp.task('update', function(callback) {
+  awsBeanstalk.update(require("./beanstalk-config.js"), callback);
+});
+
 gulp.task('deploy', function(callback) {
   return runSequence(
     ['clean'],
