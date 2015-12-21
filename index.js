@@ -21,7 +21,7 @@ function setup(config, codePackage) {
     ApplicationName: config.appName,
     EnvironmentName: config.appName + '-env',
     Description: config.description,
-    VersionLabel: config.version + '.0',
+    VersionLabel: config.version,
     AutoCreateApplication: true,
     SolutionStackName: config.solutionStack,
     TemplateName: config.template,
@@ -51,6 +51,7 @@ function waitForEnv(beanstalk, params, status, logger, callback, count) {
     logger('Waiting for environment "' + params.EnvironmentName + '"...');
   }
   count = count || 0;
+  status = Array.isArray(status) ? status : [status];
   beanstalk.describeEnvironments(
     {
       ApplicationName: params.ApplicationName,
@@ -66,18 +67,18 @@ function waitForEnv(beanstalk, params, status, logger, callback, count) {
         callback(err);
       } else {
         if (data.Environments && data.Environments.length > 0) {
-          if (data.Environments[0].Status !== status) {
+          if (status.indexOf(data.Environments[0].Status) === -1) {
             if (count >= 50) {
               logger('  Waited too long; aborting. Please manually clean up the environment and try again');
               callback(true);
             } else {
-              logger('    Not ' + status + ' (currently ' + data.Environments[0].Status + '); next check in ' + waitTime + 'sec (attempt: ' + (count + 1) + '/50)');
+              logger('    Not one of [' + status + '] (currently ' + data.Environments[0].Status + '); next check in ' + waitTime + 'sec (attempt: ' + (count + 1) + '/50)');
               setTimeout(function () {
                 waitForEnv(beanstalk, params, status, logger, callback, count + 1);
               }, waitTime * 1000);
             }
           } else {
-            logger('   Environment is ' + status + '; Done');
+            logger('   Environment is ' + data.Environments[0].Status + '; Done');
             callback(err, data);
           }
         } else {
@@ -139,7 +140,7 @@ function createEnvironment(beanstalk, params, logger, callback) {
 
 function terminateEnvironment(beanstalk, params, logger, callback) {
   logger('Terminating environment "' + params.EnvironmentName + '"...');
-  waitForEnv(beanstalk, params, 'Ready', logger, function (err) {
+  waitForEnv(beanstalk, params, ['Terminated','Ready'], logger, function (err) {
     if (err) {
       callback(err);
     } else {
@@ -180,7 +181,7 @@ function swapEnvironments(beanstalk, sourceName, destinationName, logger, callba
   );
 };
 
-function describeEnvironment(beanstalk, params, logger, callback) {
+function describeEnvironment(beanstalk, params, logger, callback, forSwap) {
   logger('Checking for environment "' + params.EnvironmentName + '"...');
   beanstalk.describeEnvironments(
     {
@@ -194,13 +195,16 @@ function describeEnvironment(beanstalk, params, logger, callback) {
         callback(err);
       } else {
         if (data.Environments && data.Environments.length > 0) {
-          if (data.Environments[0].Status !== 'Ready') {
+          if (data.Environments[0].Status !== 'Ready' && !forSwap) {
             waitForEnv(beanstalk, params, 'Ready', logger, callback);
           } else {
             callback(err, data);
           }
         } else {
-          createEnvironment(beanstalk, params, logger, callback);
+          getLatestVersion(beanstalk, params, logger, function (err, data){
+            params.VersionLabel = data || params.VersionLabel;
+            createEnvironment(beanstalk, params, logger, callback);
+          });
         }
       }
     }
@@ -236,6 +240,27 @@ function describeApplication(beanstalk, params, logger, callback) {
           callback(err, data);
         } else {
           createApplication(beanstalk, params, logger, callback);
+        }
+      }
+    }
+  );
+};
+
+function getLatestVersion(beanstalk, params, logger, callback) {
+  logger('Getting latest application version for "' + params.ApplicationName + '"...');
+  beanstalk.describeApplicationVersions(
+    {
+      ApplicationName: params.ApplicationName
+    },
+    function(err, data) {
+      if (err) {
+        logger('beanstalk.describeApplicationVersions request failed. Check your AWS credentials and permissions.');
+        callback(err);
+      } else {
+        if (data.ApplicationVersions && data.ApplicationVersions.length > 0) {
+          callback(err, data.ApplicationVersions[0].VersionLabel);
+        } else {
+          callback(err, null);
         }
       }
     }
@@ -365,32 +390,55 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
               callback(err);
             } else {
               describeEnvironment(beanstalk, params, logger, function (err, data) {
-                var version;
                 if (err) {
                   callback(err);
                 } else {
-                  version = data.Environments[0].VersionLabel.split('.');
-                  if (version.length > 3) {
-                    version[version.length - 1] = parseInt(version[version.length - 1]) + 1;
-                  } else {
-                    version.push(0);
-                  }
-                  params.VersionLabel = version.join('.');
-                  createApplicationVersion(beanstalk, params, logger, function (err, data) {
+                  getLatestVersion(beanstalk, params, logger, function (err, data ) {
+                    var version;
                     if (err) {
                       callback(err);
                     } else {
-                      updateEnvironment(beanstalk, params, logger, function (err, data) {
+                      version = (data || params.VersionLabel).split('.');
+                      if (version.length > 3) {
+                        version[version.length - 1] = parseInt(version[version.length - 1]) + 1;
+                      } else {
+                        version.push(0);
+                      }
+                      params.VersionLabel = version.join('.');
+                      createApplicationVersion(beanstalk, params, logger, function (err, data) {
+                        var swapName = 'tmp-' + (+new Date());
                         if (err) {
                           callback(err);
                         } else {
-                          callback();
+                          if (params.Tags || config.abswap === true) {
+                            swap(beanstalk, params, logger, params.EnvironmentName, swapName, function (err, data) {
+                              if (err) {
+                                callback(err);
+                              } else {
+                                swap(beanstalk, params, logger, swapName, params.EnvironmentName, function (err, data) {
+                                  if (err) {
+                                    callback(err);
+                                  } else {
+                                    callback();
+                                  }
+                                });
+                              }
+                            });
+                          } else {
+                            updateEnvironment(beanstalk, params, logger, function (err, data) {
+                              if (err) {
+                                callback(err);
+                              } else {
+                                callback();
+                              }
+                            });
+                          }
                         }
                       });
                     }
                   });
                 }
-              });
+              }, params.Tags || config.abswap === true);
             }
           });
         }
@@ -398,6 +446,41 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     }
   });
 };
+
+function swap(beanstalk, params, logger, from, to, callback) {
+  params.EnvironmentName = to;
+  createEnvironment(beanstalk, params, logger, function (err, data) {
+    if (err) {
+      callback(err);
+    } else {
+      if (params.Tier.Name === 'WebServer') {
+        swapEnvironments(beanstalk, from, params.EnvironmentName, logger, function (err, data) {
+          if (err) {
+            callback(err);
+          } else {
+            params.EnvironmentName = from
+            terminateEnvironment(beanstalk, params, logger, function (err, data) {
+              if (err) {
+                callback(err);
+              } else {
+                callback(err, data);
+              }
+            });
+          }
+        });
+      } else {
+        params.EnvironmentName = from;
+        terminateEnvironment(beanstalk, params, logger, function (err, data) {
+          if (err) {
+            callback(err);
+          } else {
+            callback(err, data);
+          }
+        });
+      }
+    }
+  });
+}
 
 exports.update = function(config, callback, logger, beanstalk) {
   var params;
@@ -436,41 +519,6 @@ exports.update = function(config, callback, logger, beanstalk) {
     return callback('Provided both "solutionStack" and "template" config; only one or the other supported');
   }
 
-  function swap(from, to, callback) {
-    params.EnvironmentName = to;
-    createEnvironment(beanstalk, params, logger, function (err, data) {
-      if (err) {
-        callback(err);
-      } else {
-        if (params.Tier.Name === 'WebServer') {
-          swapEnvironments(beanstalk, from, params.EnvironmentName, logger, function (err, data) {
-            if (err) {
-              callback(err);
-            } else {
-              params.EnvironmentName = from
-              terminateEnvironment(beanstalk, params, logger, function (err, data) {
-                if (err) {
-                  callback(err);
-                } else {
-                  callback(err, data);
-                }
-              });
-            }
-          });
-        } else {
-          params.EnvironmentName = from
-          terminateEnvironment(beanstalk, params, logger, function (err, data) {
-            if (err) {
-              callback(err);
-            } else {
-              callback(err, data);
-            }
-          });
-        }
-      }
-    });
-  }
-
   describeApplication(beanstalk, params, logger, function (err, data) {
     if (err) {
       callback(err);
@@ -480,22 +528,25 @@ exports.update = function(config, callback, logger, beanstalk) {
         if (err) {
           callback(err);
         } else {
-          params.VersionLabel = data.Environments[0].VersionLabel;
-          if (params.Tags) {
-            swap(params.EnvironmentName, swapName, function (err, data) {
-              if (err) {
-                callback(err);
-              } else {
-                swap(swapName, params.EnvironmentName, function (err, data) {
-                  if (err) {
-                    callback(err);
-                  } else {
-                    callback();
-                  }
-                });
-              }
+          if (params.Tags || config.abswap === true) {
+            getLatestVersion(beanstalk, params, logger, function (err, data ) {
+              params.VersionLabel = data || params.VersionLabel + '.0';
+              swap(beanstalk, params, logger, params.EnvironmentName, swapName, function (err, data) {
+                if (err) {
+                  callback(err);
+                } else {
+                  swap(beanstalk, params, logger, swapName, params.EnvironmentName, function (err, data) {
+                    if (err) {
+                      callback(err);
+                    } else {
+                      callback();
+                    }
+                  });
+                }
+              });
             });
           } else {
+            params.VersionLabel = data.Environments[0].VersionLabel;
             updateEnvironment(beanstalk, params, logger, function (err, data) {
               if (err) {
                 callback(err);
@@ -505,7 +556,7 @@ exports.update = function(config, callback, logger, beanstalk) {
             });
           }
         }
-      });
+      }, params.Tags || config.abswap === true);
     }
   });
 };
