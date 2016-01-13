@@ -66,11 +66,11 @@ module.exports = {
   appName: 'MyApp',
 
   // either the 'solutionStack' OR 'template' key MUST be provided, but not both
-  solutionStack: '64bit Amazon Linux 2015.03 v2.0.0 running Node.js',
+  solutionStack: '64bit Amazon Linux 2015.03 v2.0.6 running Node.js',
   template: 'myEnvironmentTemplate',
 
   version: '0.1.0', // optional, else will pull version from package.json
-  S3Bucket: 'mys3bucket', // optional, else will attempt to use appName
+  S3Bucket: 'mys3bucket', // DEPRECATED - use bucketConfig.Bucket
   tier: 'Worker', // optional, else will use 'WebServer'
   environmentSettings: [
     {
@@ -84,7 +84,19 @@ module.exports = {
     {
       key: 'foo',
       value: 'bar'
-    }
+    },
+    // ...
+  ],
+  bucketConfig: { // optional - passed into S3.createBucket()
+    Bucket: 'mys3bucket', // optional, else will attempt to use appName
+    // ...
+  },
+  bucketTags: [ // optional
+    {
+      key: 'foo',
+      value: 'bar'
+    },
+    // ...
   ]
 }
 ```

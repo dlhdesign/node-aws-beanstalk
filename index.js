@@ -1,5 +1,6 @@
 var fs = require('fs');
 var AWS = require('aws-sdk');
+var extend = require('util')._extend;
 var defaultVersion = '1.0.0';
 
 function pick(src, keys) {
@@ -38,7 +39,7 @@ function setup(config, codePackage) {
   if (codePackage) {
     packageName = codePackage.split('/');
     params.SourceBundle = {
-      S3Bucket: (config.S3Bucket ? config.S3Bucket : config.appName).toLowerCase(),
+      S3Bucket: (config.bucketConfig && config.bucketConfig.Bucket ? config.bucketConfig.Bucket : config.appName).toLowerCase(),
       S3Key: config.version + '-' + packageName[packageName.length - 1]
     };
   }
@@ -292,24 +293,72 @@ function uploadCode(S3, params, codePackage, logger, callback) {
   });
 };
 
-function createBucket(S3, params, logger, callback) {
-  logger('Creating S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
+function createBucket(S3, config, params, logger, callback) {
+  var args = {};
+  extend(args, config.bucketConfig || {});
+  args.Bucket = params.SourceBundle.S3Bucket;
+  logger('Creating S3 bucket "' + args.Bucket + '"...');
   S3.createBucket(
-    {
-      Bucket: params.SourceBundle.S3Bucket
-    },
-    function(err, data) {
+    args,
+    function(err, bucketData) {
       if (err) {
-        logger('Create S3 bucket "' + params.Bucket + '" failed.');
+        logger('Create S3 bucket "' + args.Bucket + '" failed.');
         callback(err);
       } else {
-        callback(err, data);
+        updateBucketTags(S3, config, params, logger, function(err) {
+          callback(err, bucketData);
+        });
       }
     }
   );
 };
 
-function getBucket(S3, params, logger, callback) {
+function updateBucketTags(S3, config, params, logger, callback) {
+  if (config.bucketTags) {
+    logger('Updating S3 bucket tags for "' + params.SourceBundle.S3Bucket + '"...');
+    S3.putBucketTagging({
+      Bucket: params.SourceBundle.S3Bucket,
+      Tagging: {
+        TagSet: config.bucketTags
+      }
+    }, function (err, data) {
+      if (err) {
+        logger('Adding tags to S3 bucket "' + params.SourceBundle.S3Bucket + '" failed.');
+        callback(err);
+      } else {
+        callback(err, data);
+      }
+    });
+  } else {
+    callback(null, null);
+  }
+};
+
+function updateBucket(S3, config, params, logger, callback) {
+  var args = {};
+  if (config.bucketConfig) {
+    extend(args, config.bucketConfig || {});
+    args.Bucket = params.SourceBundle.S3Bucket;
+    logger('Updating S3 bucket "' + args.Bucket + '"...');
+    S3.putBucketAcl(
+      args,
+      function(err, bucketData) {
+        if (err) {
+          logger('Updating S3 bucket "' + args.Bucket + '" failed.');
+          callback(err);
+        } else {
+          updateBucketTags(S3, config, params, logger, function (err) {
+            callback(err, bucketData);
+          });
+        }
+      }
+    );
+  } else {
+    updateBucketTags(S3, config, params, logger, callback);
+  }
+};
+
+function getBucket(S3, config, params, logger, callback) {
   logger('Checking for S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
   S3.headBucket(
     {
@@ -318,13 +367,15 @@ function getBucket(S3, params, logger, callback) {
     function(err, data) {
       if (err) {
         if (err.statusCode === 404) {
-          createBucket(S3, params, logger, callback);
+          createBucket(S3, config, params, logger, callback);
         } else {
           logger('S3.headBucket request failed. Check your AWS credentials and permissions.');
           callback(err);
         }
       } else {
-        callback(err, data);
+        updateBucket(S3, config, params, logger, function(err) {
+          callback(err, data);
+        });
       }
     }
   );
@@ -377,7 +428,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
     return callback('Missing/invalid codePackage');
   }
 
-  getBucket(S3, params, logger, function (err, data) {
+  getBucket(S3, config, params, logger, function (err, data) {
     if (err) {
       callback(err);
     } else {
@@ -509,6 +560,12 @@ exports.update = function(config, callback, logger, beanstalk) {
       accessKeyId: 'accessKeyId' in config ? config.accessKeyId : '',
       secretAccessKey: 'secretAccessKey' in config ? config.secretAccessKey : ''
     });
+  }
+  if (config.S3Bucket) {
+    logger('  DEPRECATION NOTICE: "S3Bucket" configuration is deprecated. Pleae use "bucketConfig.Bucket"');
+    config.bucketConfig = config.bucketConfig || {};
+    config.bucketConfig.Bucket = config.bucketConfig.Bucket || config.S3Bucket;
+    delete config.S3Bucket;
   }
   params = setup(config);
 
