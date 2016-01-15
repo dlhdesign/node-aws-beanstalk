@@ -471,28 +471,32 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
                         if (err) {
                           callback(err);
                         } else {
-                          if (!newEnvironment && (params.Tags || config.abswap === true)) {
-                            swap(beanstalk, params, logger, params.EnvironmentName, swapName, function (err, data) {
-                              if (err) {
-                                callback(err);
-                              } else {
-                                swap(beanstalk, params, logger, swapName, params.EnvironmentName, function (err, data) {
-                                  if (err) {
-                                    callback(err);
-                                  } else {
-                                    callback();
-                                  }
-                                });
-                              }
-                            });
+                          if (newEnvironment) {
+                            callback();
                           } else {
-                            updateEnvironment(beanstalk, params, logger, function (err, data) {
-                              if (err) {
-                                callback(err);
-                              } else {
-                                callback();
-                              }
-                            });
+                            if (params.Tags || config.abswap === true)) {
+                              swap(beanstalk, params, logger, params.EnvironmentName, swapName, function (err, data) {
+                                if (err) {
+                                  callback(err);
+                                } else {
+                                  swap(beanstalk, params, logger, swapName, params.EnvironmentName, function (err, data) {
+                                    if (err) {
+                                      callback(err);
+                                    } else {
+                                      callback();
+                                    }
+                                  });
+                                }
+                              });
+                            } else {
+                              updateEnvironment(beanstalk, params, logger, function (err, data) {
+                                if (err) {
+                                  callback(err);
+                                } else {
+                                  callback();
+                                }
+                              });
+                            }
                           }
                         }
                       });
