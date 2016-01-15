@@ -47,10 +47,11 @@ function setup(config, codePackage) {
   return params;
 }
 
-function waitForEnv(beanstalk, params, status, logger, callback, count) {
+function waitForEnv(beanstalk, params, status, logger, callback, count, start) {
   if (!count) {
     logger('Waiting for environment "' + params.EnvironmentName + '"...');
   }
+  start = start || +(new Date());
   count = count || 0;
   status = Array.isArray(status) ? status : [status];
   beanstalk.describeEnvironments(
@@ -75,11 +76,11 @@ function waitForEnv(beanstalk, params, status, logger, callback, count) {
             } else {
               logger('    "' + params.EnvironmentName + '" not one of [' + status + '] (currently ' + data.Environments[0].Status + '); next check in ' + waitTime + 'sec (attempt: ' + (count + 1) + '/50)');
               setTimeout(function () {
-                waitForEnv(beanstalk, params, status, logger, callback, count + 1);
+                waitForEnv(beanstalk, params, status, logger, callback, count + 1, start);
               }, waitTime * 1000);
             }
           } else {
-            logger('   "' + params.EnvironmentName + '" is ' + data.Environments[0].Status + '; Done');
+            logger('   "' + params.EnvironmentName + '" is ' + data.Environments[0].Status + '; Done (' + ((+(new Date) - start)/1000) + 'sec)' );
             callback(err, data);
           }
         } else {
