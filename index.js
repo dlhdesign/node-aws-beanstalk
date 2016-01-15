@@ -60,7 +60,7 @@ function waitForEnv(beanstalk, params, status, logger, callback, count, start) {
       EnvironmentNames: [params.EnvironmentName]
     },
     function(err, data) {
-      var waitTime = 60 - (count * 2);
+      var waitTime = 40 - (count * 2);
       if (waitTime < 2) {
         waitTime = 2;
       }
