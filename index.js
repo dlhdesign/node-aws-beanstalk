@@ -70,7 +70,7 @@ function waitForEnv(beanstalk, params, status, logger, callback, count) {
         if (data.Environments && data.Environments.length > 0) {
           if (status.indexOf(data.Environments[0].Status) === -1) {
             if (count >= 50) {
-              logger('  "' + params.EnvironmentName + '" Waited too long; aborting. Please manually clean up the environment and try again');
+              logger('  "' + params.EnvironmentName + '" waited too long; aborting. Please manually clean up the environment and try again');
               callback(true);
             } else {
               logger('    "' + params.EnvironmentName + '" not one of [' + status + '] (currently ' + data.Environments[0].Status + '); next check in ' + waitTime + 'sec (attempt: ' + (count + 1) + '/50)');
