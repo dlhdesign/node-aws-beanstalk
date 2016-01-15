@@ -59,7 +59,7 @@ function waitForEnv(beanstalk, params, status, logger, callback, count) {
       EnvironmentNames: [params.EnvironmentName]
     },
     function(err, data) {
-      var waitTime = 30 - (count * 2);
+      var waitTime = 60 - (count * 2);
       if (waitTime < 2) {
         waitTime = 2;
       }
@@ -70,16 +70,16 @@ function waitForEnv(beanstalk, params, status, logger, callback, count) {
         if (data.Environments && data.Environments.length > 0) {
           if (status.indexOf(data.Environments[0].Status) === -1) {
             if (count >= 50) {
-              logger('  Waited too long; aborting. Please manually clean up the environment and try again');
+              logger('  "' + params.EnvironmentName + '" Waited too long; aborting. Please manually clean up the environment and try again');
               callback(true);
             } else {
-              logger('    Not one of [' + status + '] (currently ' + data.Environments[0].Status + '); next check in ' + waitTime + 'sec (attempt: ' + (count + 1) + '/50)');
+              logger('    "' + params.EnvironmentName + '" not one of [' + status + '] (currently ' + data.Environments[0].Status + '); next check in ' + waitTime + 'sec (attempt: ' + (count + 1) + '/50)');
               setTimeout(function () {
                 waitForEnv(beanstalk, params, status, logger, callback, count + 1);
               }, waitTime * 1000);
             }
           } else {
-            logger('   Environment is ' + data.Environments[0].Status + '; Done');
+            logger('   "' + params.EnvironmentName + '" is ' + data.Environments[0].Status + '; Done');
             callback(err, data);
           }
         } else {
@@ -133,7 +133,12 @@ function createEnvironment(beanstalk, params, logger, callback) {
         callback(err);
       } else {
         logger('Environment "' + params.EnvironmentName + '" created and is now being launched...');
-        waitForEnv(beanstalk, params, 'Ready', logger, callback);
+        waitForEnv(beanstalk, params, 'Ready', logger, function ( err, data ) {
+          callback( err, {
+            newRecord: true,
+            data: data
+          });
+        });
       }
     }
   );
@@ -382,7 +387,8 @@ function getBucket(S3, config, params, logger, callback) {
 };
 
 exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) {
-  var params;
+  var params,
+      newEnvironment = false;
 
   if (!logger) {
     logger = console.log;
@@ -444,6 +450,9 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
                 if (err) {
                   callback(err);
                 } else {
+                  if ( data.newRecord ) {
+                    newEnvironment = true;
+                  }
                   getLatestVersion(beanstalk, params, logger, function (err, data ) {
                     var version;
                     if (err) {
@@ -461,28 +470,32 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
                         if (err) {
                           callback(err);
                         } else {
-                          if (params.Tags || config.abswap === true) {
-                            swap(beanstalk, params, logger, params.EnvironmentName, swapName, function (err, data) {
-                              if (err) {
-                                callback(err);
-                              } else {
-                                swap(beanstalk, params, logger, swapName, params.EnvironmentName, function (err, data) {
-                                  if (err) {
-                                    callback(err);
-                                  } else {
-                                    callback();
-                                  }
-                                });
-                              }
-                            });
+                          if (!newEnvironment) {
+                            if (params.Tags || config.abswap === true) {
+                              swap(beanstalk, params, logger, params.EnvironmentName, swapName, function (err, data) {
+                                if (err) {
+                                  callback(err);
+                                } else {
+                                  swap(beanstalk, params, logger, swapName, params.EnvironmentName, function (err, data) {
+                                    if (err) {
+                                      callback(err);
+                                    } else {
+                                      callback();
+                                    }
+                                  });
+                                }
+                              });
+                            } else {
+                              updateEnvironment(beanstalk, params, logger, function (err, data) {
+                                if (err) {
+                                  callback(err);
+                                } else {
+                                  callback();
+                                }
+                              });
+                            }
                           } else {
-                            updateEnvironment(beanstalk, params, logger, function (err, data) {
-                              if (err) {
-                                callback(err);
-                              } else {
-                                callback();
-                              }
-                            });
+                            callback();
                           }
                         }
                       });
