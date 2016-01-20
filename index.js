@@ -1,5 +1,6 @@
 var fs = require('fs');
 var AWS = require('aws-sdk');
+var util = require( 'util' );
 var extend = require('util')._extend;
 var defaultVersion = '1.0.0';
 
@@ -80,7 +81,7 @@ function waitForEnv(beanstalk, params, status, logger, callback, count, start) {
               }, waitTime * 1000);
             }
           } else {
-            logger('   "' + params.EnvironmentName + '" is ' + data.Environments[0].Status + '; Done (' + ((+(new Date) - start)/1000) + 'sec)' );
+            logger('   "' + params.EnvironmentName + '" is ' + data.Environments[0].Status + '; Done (' + ((+(new Date) - start)/1000) + 'sec)');
             callback(err, data);
           }
         } else {
@@ -275,11 +276,12 @@ function getLatestVersion(beanstalk, params, logger, callback) {
 };
 
 function uploadCode(S3, params, codePackage, logger, callback) {
-  logger('Uploading code to S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
+  logger('Preparing to upload code to S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
   fs.readFile(codePackage, function(err, data) {
-    if(err) {
+    if (err) {
       return callback('Error reading specified package "'+ codePackage + '"');
     }
+    logger('Uploading code to S3 bucket "' + params.SourceBundle.S3Bucket + '"...');
     S3.upload(
       {
         Bucket: params.SourceBundle.S3Bucket,
@@ -292,6 +294,7 @@ function uploadCode(S3, params, codePackage, logger, callback) {
           logger('Upload of "' + codePackage + '" to S3 bucket failed.');
           callback(err);
         } else {
+          logger('Uploading code to S3 bucket "' + params.SourceBundle.S3Bucket + '" done.');
           callback(err, data);
         }
       }
@@ -312,7 +315,10 @@ function createBucket(S3, config, params, logger, callback) {
         callback(err);
       } else {
         updateBucketTags(S3, config, params, logger, function(err) {
-          callback(err, bucketData);
+          // Give the bucket time to "settle" to prevent errors
+          setTimeout(function () {
+            callback(err, bucketData);
+          }, 10);
         });
       }
     }
@@ -332,6 +338,7 @@ function updateBucketTags(S3, config, params, logger, callback) {
         logger('Adding tags to S3 bucket "' + params.SourceBundle.S3Bucket + '" failed.');
         callback(err);
       } else {
+        logger('Adding tags to S3 bucket "' + params.SourceBundle.S3Bucket + '" done.');
         callback(err, data);
       }
     });
@@ -551,7 +558,9 @@ exports.update = function(config, callback, logger, beanstalk) {
   var params;
 
   if (!logger) {
-    logger = console.log;
+    logger = function (msg) {
+      console.log( util.format( '[%s] %s', chalk.green( params.ApplicationName ), msg ) );
+    };
   }
 
   if(!beanstalk) {
