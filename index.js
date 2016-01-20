@@ -314,11 +314,15 @@ function createBucket(S3, config, params, logger, callback) {
         logger('Create S3 bucket "' + args.Bucket + '" failed.');
         callback(err);
       } else {
-        updateBucketTags(S3, config, params, logger, function(err) {
-          // Give the bucket time to "settle" to prevent errors
-          setTimeout(function () {
-            callback(err, bucketData);
-          }, 10);
+        S3.waitFor('bucketExists', args, function (err) {
+          if (err) {
+            logger('Create S3 bucket "' + args.Bucket + '" failed.');
+            callback(err);
+          } else {
+            updateBucketTags(S3, config, params, logger, function(err) {
+              callback(err, bucketData);
+            });
+          }
         });
       }
     }
@@ -339,7 +343,9 @@ function updateBucketTags(S3, config, params, logger, callback) {
         callback(err);
       } else {
         logger('Adding tags to S3 bucket "' + params.SourceBundle.S3Bucket + '" done.');
-        callback(err, data);
+        s3.waitFor('bucketExists', {
+          Bucket: params.SourceBundle.S3Bucket
+        }, callback);
       }
     });
   } else {
