@@ -314,7 +314,9 @@ function createBucket(S3, config, params, logger, callback) {
         logger('Create S3 bucket "' + args.Bucket + '" failed.');
         callback(err);
       } else {
-        S3.waitFor('bucketExists', args, function (err) {
+        S3.waitFor('bucketExists', {
+          Bucket: args.Bucket
+        }, function (err) {
           if (err) {
             logger('Create S3 bucket "' + args.Bucket + '" failed.');
             callback(err);
