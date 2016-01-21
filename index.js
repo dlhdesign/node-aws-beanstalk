@@ -50,6 +50,7 @@ function setup(config, codePackage) {
 }
 
 function waitForEnv(beanstalk, params, status, logger, callback, count, start) {
+  var maxTries = 80;
   if (!count) {
     logger('Waiting for environment "' + params.EnvironmentName + '"...');
   }
@@ -62,7 +63,7 @@ function waitForEnv(beanstalk, params, status, logger, callback, count, start) {
       EnvironmentNames: [params.EnvironmentName]
     },
     function(err, data) {
-      var waitTime = 40 - (count * 2);
+      var waitTime = (maxTries / 2) - (count * 2);
       if (waitTime < 2) {
         waitTime = 2;
       }
@@ -72,11 +73,11 @@ function waitForEnv(beanstalk, params, status, logger, callback, count, start) {
       } else {
         if (data.Environments && data.Environments.length > 0) {
           if (status.indexOf(data.Environments[0].Status) === -1) {
-            if (count >= 80) {
+            if (count >= maxTries) {
               logger('  "' + params.EnvironmentName + '" waited too long; aborting. Please manually clean up the environment and try again');
               callback(true);
             } else {
-              logger('    "' + params.EnvironmentName + '" not one of [' + status + '] (currently ' + data.Environments[0].Status + '); next check in ' + waitTime + 'sec (attempt: ' + (count + 1) + '/50)');
+              logger('    "' + params.EnvironmentName + '" not one of [' + status + '] (currently ' + data.Environments[0].Status + '); next check in ' + waitTime + 'sec (attempt: ' + (count + 1) + '/' + maxTries + ')');
               setTimeout(function () {
                 waitForEnv(beanstalk, params, status, logger, callback, count + 1, start);
               }, waitTime * 1000);
