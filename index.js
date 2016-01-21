@@ -72,7 +72,7 @@ function waitForEnv(beanstalk, params, status, logger, callback, count, start) {
       } else {
         if (data.Environments && data.Environments.length > 0) {
           if (status.indexOf(data.Environments[0].Status) === -1) {
-            if (count >= 50) {
+            if (count >= 80) {
               logger('  "' + params.EnvironmentName + '" waited too long; aborting. Please manually clean up the environment and try again');
               callback(true);
             } else {
