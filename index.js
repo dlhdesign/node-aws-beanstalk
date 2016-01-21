@@ -2,6 +2,7 @@ var fs = require('fs');
 var AWS = require('aws-sdk');
 var util = require( 'util' );
 var extend = require('util')._extend;
+var chalk = require( 'chalk' );
 var defaultVersion = '1.0.0';
 
 function pick(src, keys) {
@@ -407,7 +408,9 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
       newEnvironment = false;
 
   if (!logger) {
-    logger = console.log;
+    logger = function (msg) {
+      console.log( util.format( '[%s] %s', chalk.green( params.ApplicationName ), msg ) );
+    };
   }
 
   if(!beanstalk || !S3) {
