@@ -345,7 +345,7 @@ function updateBucketTags(S3, config, params, logger, callback) {
         callback(err);
       } else {
         logger('Adding tags to S3 bucket "' + params.SourceBundle.S3Bucket + '" done.');
-        s3.waitFor('bucketExists', {
+        S3.waitFor('bucketExists', {
           Bucket: params.SourceBundle.S3Bucket
         }, callback);
       }
