@@ -22,7 +22,7 @@ function setup(config, codePackage) {
   config.version = config.version !== undefined ? config.version : defaultVersion;
   params = {
     ApplicationName: config.appName,
-    EnvironmentName: config.appName + '-env',
+    EnvironmentName: config.environmentName || config.appName + '-env',
     Description: config.description,
     VersionLabel: config.version,
     AutoCreateApplication: true,
@@ -442,6 +442,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
       secretAccessKey: 'secretAccessKey' in config ? config.secretAccessKey : ''
     });
   }
+
   params = setup(config, codePackage);
 
   if (!params.SolutionStackName && !params.TemplateName) {
