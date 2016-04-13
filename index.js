@@ -22,7 +22,7 @@ function setup(config, codePackage) {
   config.version = config.version !== undefined ? config.version : defaultVersion;
   params = {
     ApplicationName: config.appName,
-    EnvironmentName: config.appName + '-env',
+    EnvironmentName: config.envName || config.appName + '-env',
     Description: config.description,
     VersionLabel: config.version,
     AutoCreateApplication: true,
@@ -127,7 +127,7 @@ function createApplicationVersion(beanstalk, params, logger, callback) {
   );
 };
 
-function createEnvironment(beanstalk, params, logger, callback) {
+function createEnvironment(beanstalk, params, logger, callback, fast) {
   logger('Creating environment "' + params.EnvironmentName + '"...');
   beanstalk.createEnvironment(
     pick(params,['ApplicationName', 'EnvironmentName', 'Description', 'OptionSettings', 'SolutionStackName', 'TemplateName', 'VersionLabel', 'Tier', 'Tags', 'CNAMEPrefix', 'GroupName']),
@@ -137,12 +137,20 @@ function createEnvironment(beanstalk, params, logger, callback) {
         callback(err);
       } else {
         logger('Environment "' + params.EnvironmentName + '" created and is now being launched...');
-        waitForEnv(beanstalk, params, 'Ready', logger, function ( err, data ) {
+        if (fast === true) {
+          logger('Environment "' + params.EnvironmentName + '": skipping wait');
           callback( err, {
             newRecord: true,
             data: data
           });
-        });
+        } else {
+          waitForEnv(beanstalk, params, 'Ready', logger, function ( err, data ) {
+            callback( err, {
+              newRecord: true,
+              data: data
+            });
+          });
+        }
       }
     }
   );
@@ -211,9 +219,9 @@ function describeEnvironment(beanstalk, params, logger, callback, forSwap) {
             callback(err, data);
           }
         } else {
-          getLatestVersion(beanstalk, params, logger, function (err, data){
-            params.VersionLabel = data || params.VersionLabel;
-            createEnvironment(beanstalk, params, logger, callback);
+          params.VersionLabel = params.EnvironmentName + '-' + defaultVersion;
+          createApplicationVersion(beanstalk, params, logger, function (err, data) {
+            createEnvironment(beanstalk, params, logger, callback, true);
           });
         }
       }
@@ -222,12 +230,12 @@ function describeEnvironment(beanstalk, params, logger, callback, forSwap) {
 };
 
 function createApplication(beanstalk, params, logger, callback) {
-  logger('Creating application "' + params.ApplicationName + '" version "' + params.VersionLabel + '"...');
-  beanstalk.createApplicationVersion(
-    pick(params,['ApplicationName', 'Description', 'AutoCreateApplication', 'VersionLabel', 'SourceBundle']),
+  logger('Creating application "' + params.ApplicationName + '...');
+  beanstalk.createApplication(
+    pick(params,['ApplicationName', 'Description']),
     function(err, data) {
     if (err) {
-      logger('Create application version failed.');
+      logger('Create application failed.');
       callback(err);
     } else {
       callback(err, data);
@@ -268,7 +276,14 @@ function getLatestVersion(beanstalk, params, logger, callback) {
         callback(err);
       } else {
         if (data.ApplicationVersions && data.ApplicationVersions.length > 0) {
-          callback(err, data.ApplicationVersions[0].VersionLabel);
+          if (!data.ApplicationVersions.some(function (version) {
+            if (version.VersionLabel.indexOf(params.envName) > -1) {
+              callback(err, version.VersionLabel);
+              return true;
+            }
+          })) {
+            callback(err, null);
+          }
         } else {
           callback(err, null);
         }
@@ -470,57 +485,58 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
                 if (err) {
                   callback(err);
                 } else {
-                  if ( data.newRecord ) {
-                    newEnvironment = true;
-                  }
-                  getLatestVersion(beanstalk, params, logger, function (err, data ) {
-                    var version;
-                    if (err) {
-                      callback(err);
-                    } else {
-                      version = (data || params.VersionLabel).split('.');
-                      if (version.length > 3) {
-                        version[version.length - 1] = parseInt(version[version.length - 1]) + 1;
+                  if ( data && data.newRecord ) {
+                    callback();
+                  } else {
+                    getLatestVersion(beanstalk, params, logger, function (err, data ) {
+                      var version;
+                      if (err) {
+                        callback(err);
                       } else {
-                        version.push(0);
-                      }
-                      params.VersionLabel = version.join('.');
-                      createApplicationVersion(beanstalk, params, logger, function (err, data) {
-                        var swapName = 'tmp-' + (+new Date());
-                        if (err) {
-                          callback(err);
+                        version = (data || params.VersionLabel).split('.');
+                        if (version.length > 3) {
+                          version[version.length - 1] = parseInt(version[version.length - 1]) + 1;
                         } else {
-                          if (newEnvironment) {
-                            callback();
+                          version.push(0);
+                        }
+                        params.VersionLabel = params.EnvironmentName + '-' + version.join('.');
+                        createApplicationVersion(beanstalk, params, logger, function (err, data) {
+                          var swapName = 'tmp-' + (+new Date());
+                          if (err) {
+                            callback(err);
                           } else {
-                            if (params.Tags || config.abswap === true) {
-                              swap(beanstalk, params, logger, params.EnvironmentName, swapName, function (err, data) {
-                                if (err) {
-                                  callback(err);
-                                } else {
-                                  swap(beanstalk, params, logger, swapName, params.EnvironmentName, function (err, data) {
-                                    if (err) {
-                                      callback(err);
-                                    } else {
-                                      callback();
-                                    }
-                                  });
-                                }
-                              });
+                            if (newEnvironment) {
+                              callback();
                             } else {
-                              updateEnvironment(beanstalk, params, logger, function (err, data) {
-                                if (err) {
-                                  callback(err);
-                                } else {
-                                  callback();
-                                }
-                              });
+                              if (params.Tags || config.abswap === true) {
+                                swap(beanstalk, params, logger, params.EnvironmentName, swapName, function (err, data) {
+                                  if (err) {
+                                    callback(err);
+                                  } else {
+                                    swap(beanstalk, params, logger, swapName, params.EnvironmentName, function (err, data) {
+                                      if (err) {
+                                        callback(err);
+                                      } else {
+                                        callback();
+                                      }
+                                    });
+                                  }
+                                });
+                              } else {
+                                updateEnvironment(beanstalk, params, logger, function (err, data) {
+                                  if (err) {
+                                    callback(err);
+                                  } else {
+                                    callback();
+                                  }
+                                });
+                              }
                             }
                           }
-                        }
-                      });
-                    }
-                  });
+                        });
+                      }
+                    });
+                  }
                 }
               }, params.Tags || config.abswap === true);
             }
