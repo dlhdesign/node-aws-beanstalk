@@ -425,7 +425,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
 
   if (!logger) {
     logger = function (msg) {
-      console.log( util.format( '[%s] %s', chalk.green( params.ApplicationName ), msg ) );
+      console.log( util.format( '[%s] %s', chalk.green( params.ApplicationName + '[' + params.EnvironmentName + ']' ), msg ) );
     };
   }
 
