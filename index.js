@@ -587,7 +587,7 @@ exports.update = function(config, callback, logger, beanstalk) {
 
   if (!logger) {
     logger = function (msg) {
-      console.log( util.format( '[%s] %s', chalk.green( params.ApplicationName ), msg ) );
+      console.log( util.format( '[%s] %s', chalk.green( params.ApplicationName + '[' + params.EnvironmentName + ']' ), msg ) );
     };
   }
 
