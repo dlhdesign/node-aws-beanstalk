@@ -277,7 +277,7 @@ function getLatestVersion(beanstalk, params, logger, callback) {
       } else {
         if (data.ApplicationVersions && data.ApplicationVersions.length > 0) {
           if (!data.ApplicationVersions.some(function (version) {
-            if (version.VersionLabel.indexOf(params.envName) > -1) {
+            if (version.VersionLabel.indexOf(params.EnvironmentName) > -1) {
               callback(err, version.VersionLabel);
               return true;
             }
@@ -499,7 +499,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
                         } else {
                           version.push(0);
                         }
-                        params.VersionLabel = params.EnvironmentName + '-' + version.join('.');
+                        params.VersionLabel = version.join('.');
                         createApplicationVersion(beanstalk, params, logger, function (err, data) {
                           var swapName = 'tmp-' + (+new Date());
                           if (err) {
