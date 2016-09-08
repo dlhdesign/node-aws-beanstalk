@@ -453,6 +453,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   if (!S3) {
     S3 = new AWS.S3({
       region: config.region,
+      signatureVersion: 'v4',
       accessKeyId: 'accessKeyId' in config ? config.accessKeyId : '',
       secretAccessKey: 'secretAccessKey' in config ? config.secretAccessKey : ''
     });
