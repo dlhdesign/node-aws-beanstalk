@@ -442,21 +442,37 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
       var HttpsProxyAgent = require('https-proxy-agent');
       AWS.config.httpOptions.agent = new HttpsProxyAgent(process.env.HTTPS_PROXY);
     }
-  }
-  if (!beanstalk) {
-    beanstalk = new AWS.ElasticBeanstalk({
-      region: config.region,
-      accessKeyId: 'accessKeyId' in config ? config.accessKeyId : '',
-      secretAccessKey: 'secretAccessKey' in config ? config.secretAccessKey : ''
-    });
-  }
-  if (!S3) {
-    S3 = new AWS.S3({
-      region: config.region,
-      signatureVersion: 'v4',
-      accessKeyId: 'accessKeyId' in config ? config.accessKeyId : '',
-      secretAccessKey: 'secretAccessKey' in config ? config.secretAccessKey : ''
-    });
+    if ('accessKeyId' in config && 'secretAccessKey' in config) {
+      if (!beanstalk) {
+        logger('Creating beanstalk with accessKeyId "' + config.accessKeyId + '" in region "' + config.region + '"');
+        beanstalk = new AWS.ElasticBeanstalk({
+          region: config.region,
+          accessKeyId: config.accessKeyId,
+          secretAccessKey: config.secretAccessKey
+        });
+      }
+      if (!S3) {
+        logger('Creating S3 with accessKeyId "' + config.accessKeyId + '"');
+        S3 = new AWS.S3({
+          apiVersion: '2006-03-01',
+          signatureVersion: 'v4',
+          accessKeyId: config.accessKeyId,
+          secretAccessKey: config.secretAccessKey
+        });
+      }
+    } else {
+      if (!beanstalk) {
+        beanstalk = new AWS.ElasticBeanstalk({
+          region: config.region
+        });
+      }
+      if (!S3) {
+        S3 = new AWS.S3({
+          apiVersion: '2006-03-01',
+          signatureVersion: 'v4'
+        });
+      }
+    }
   }
   params = setup(config, codePackage);
 
