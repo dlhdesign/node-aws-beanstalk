@@ -423,6 +423,7 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
   var params,
       newEnvironment = false;
 
+  params = setup(config, codePackage);
   if (!logger) {
     logger = function (msg) {
       console.log( util.format( '[%s] %s', chalk.green( params.ApplicationName + '[' + params.EnvironmentName + ']' ), msg ) );
@@ -474,7 +475,6 @@ exports.deploy = function(codePackage, config, callback, logger, beanstalk, S3) 
       }
     }
   }
-  params = setup(config, codePackage);
 
   if (!params.SolutionStackName && !params.TemplateName) {
     return callback('Missing either "solutionStack" or "template" config');
@@ -602,6 +602,7 @@ function swap(beanstalk, params, logger, from, to, callback) {
 exports.update = function(config, callback, logger, beanstalk) {
   var params;
 
+  params = setup(config);
   if (!logger) {
     logger = function (msg) {
       console.log( util.format( '[%s] %s', chalk.green( params.ApplicationName + '[' + params.EnvironmentName + ']' ), msg ) );
@@ -635,7 +636,6 @@ exports.update = function(config, callback, logger, beanstalk) {
     config.bucketConfig.Bucket = config.bucketConfig.Bucket || config.S3Bucket;
     delete config.S3Bucket;
   }
-  params = setup(config);
 
   if (!params.SolutionStackName && !params.TemplateName) {
     return callback('Missing either "solutionStack" or "template" config');
