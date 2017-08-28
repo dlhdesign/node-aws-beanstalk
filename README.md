@@ -90,6 +90,9 @@ module.exports = {
   bucketConfig: { // optional - passed into S3.createBucket()
     Bucket: 'mys3bucket', // optional, else will attempt to use appName
     // ...
+    CreateBucketConfiguration: {
+      LocationConstraint: 'eu-west-1', // optional, note this region should match the application's target region (see http://blog.mikebabineau.com/2013/08/21/multi-region-gotcha-on-elastic-beanstalk/)
+    },
   },
   bucketTags: [ // optional
     {
