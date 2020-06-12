@@ -221,7 +221,13 @@ function describeEnvironment(beanstalk, params, logger, callback, forSwap) {
         } else {
           params.VersionLabel = params.EnvironmentName + '-' + defaultVersion;
           createApplicationVersion(beanstalk, params, logger, function (err, data) {
-            createEnvironment(beanstalk, params, logger, callback, true);
+            if (err) {
+               logger('createApplicationVersion failed')
+               callback(err)
+            }
+            else {
+               createEnvironment(beanstalk, params, logger, callback, true);
+            }
           });
         }
       }
